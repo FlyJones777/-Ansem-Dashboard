@@ -1,0 +1,36 @@
+name: Daily ANSEM Snapshot
+
+on:
+  schedule:
+    # Runs once a day at 09:00 UTC. Adjust as you like.
+    - cron: "0 9 * * *"
+  workflow_dispatch: {}  # lets you trigger it manually from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily snapshot
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: python snapshot.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "ansem-dashboard-bot"
+          git config user.email "actions@github.com"
+          git add snapshots/ holders_meta.csv daily.csv retention.csv
+          git diff --cached --quiet || git commit -m "Daily snapshot: $(date -u +'%Y-%m-%d')"
+          git push
